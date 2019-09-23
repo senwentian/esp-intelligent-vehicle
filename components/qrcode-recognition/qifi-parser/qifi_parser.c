@@ -45,6 +45,10 @@
 #define QIFI_AUTH_OMIT          "T:omit;"
 #define QIFI_AUTH_LEN_MAX       strlen(QIFI_AUTH_NOPASS)
 
+#define QIFI_HIDDEN_TRUE        "H:true;"
+#define QIFI_HIDDEN_FALSE       "H:false;"
+#define QIFI_HIDDEN_LEN_MAX     strlen(QIFI_HIDDEN_FALSE)
+
 typedef enum {
     QIFI_SCHEME = 0,
     QIFI_AUTH_TYPE,
@@ -118,49 +122,195 @@ static const char* qifi_parser_state_qs_init(const char *p, const char* bufend, 
     return p;
 }
 
+static const char* qifi_parser_field_auth_type(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+{
+    if (p + QIFI_AUTH_LEN_MAX > bufend) {
+        *state = qs_dead;
+        return p;
+    }
+
+    if (strncmp(p, QIFI_AUTH_WEP, strlen(QIFI_AUTH_WEP)) == 0) {
+        *field |= (1 << QIFI_AUTH_TYPE);
+        *state = qs_new_field_start;
+        p += strlen(QIFI_AUTH_WEP) - 1;
+        parser->type = QIFI_WEP;
+    } else if (strncmp(p, QIFI_AUTH_WPA, strlen(QIFI_AUTH_WPA)) == 0) {
+        *field |= (1 << QIFI_AUTH_TYPE);
+        *state = qs_new_field_start;
+        p += strlen(QIFI_AUTH_WPA) - 1;
+        parser->type = QIFI_WPA;
+    } else if (strncmp(p, QIFI_AUTH_NOPASS, strlen(QIFI_AUTH_NOPASS)) == 0) {
+        *field |= (1 << QIFI_AUTH_TYPE);
+        *state = qs_new_field_start;
+        p += strlen(QIFI_AUTH_NOPASS) - 1;
+        parser->type = QIFI_NOPASS;
+    } else if (strncmp(p, QIFI_AUTH_OMIT, strlen(QIFI_AUTH_OMIT)) == 0) {
+        *field |= (1 << QIFI_AUTH_TYPE);
+        *state = qs_new_field_start;
+        p += strlen(QIFI_AUTH_OMIT) - 1;
+        parser->type = QIFI_OMIT;
+    } else {
+        *state = qs_dead;
+    }
+
+    return p;
+}
+
+static const char* qifi_parser_field_ssid(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+{
+    uint8_t index = 0;
+
+    if (*(++p) != ':') {
+        *state = qs_dead;
+        return p;
+    }
+
+    for (++p; p < bufend; ++p) {
+        if (parser->ssid_len == QIFI_SSID_LEN) {
+            break;
+        }
+
+        if (*p == ';') {
+            *field |= (1 << QIFI_SSID);
+            *state = qs_new_field_start;
+            break;
+        }
+
+        if (*p == '\\') {   // escape backslash, semicolons, commas, colons if exist
+            p++;
+            parser->ssid[index++] = *p;
+            parser->ssid_len++;
+            continue;
+        }
+
+        parser->ssid[index++] = *p;
+        parser->ssid_len++;
+    }
+
+    if (parser->ssid_len == QIFI_SSID_LEN && *p == ';') {
+        *field |= (1 << QIFI_SSID);
+        *state = qs_new_field_start;
+        return p;
+    }
+
+    if (p == bufend && *p != ';') { // no semicolons end delimiter
+        *state = qs_dead;
+        return p;
+    }
+
+    if (p == bufend && *p == ';') {
+        *field |= (1 << QIFI_SSID);
+        *state = qs_new_field_start;
+        return p;
+    }
+
+    return p;
+}
+
+static const char* qifi_parser_field_password(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+{
+    uint8_t index = 0;
+
+    if (*(++p) != ':') {
+        *state = qs_dead;
+        return p;
+    }
+
+    for (++p; p < bufend; ++p) {
+        if (parser->password_len == QIFI_PASSWORD_LEN) {
+            break;
+        }
+
+        if (*p == ';') {
+            *field |= (1 << QIFI_PASSWORD);
+            *state = qs_new_field_start;
+            break;
+        }
+
+        if (*p == '\\') {   // escape backslash, semicolons, commas, colons if exist
+            p++;
+            parser->password[index++] = *p;
+            parser->password_len++;
+            continue;
+        }
+
+        parser->password[index++] = *p;
+        parser->password_len++;
+    }
+
+    if (parser->password_len == QIFI_PASSWORD_LEN && *p == ';') {
+        *field |= (1 << QIFI_PASSWORD);
+        *state = qs_new_field_start;
+        return p;
+    }
+
+    if (p == bufend && *p != ';') { // no semicolons end delimiter
+        *state = qs_dead;
+        return p;
+    }
+
+    if (p == bufend && *p == ';') {
+        *field |= (1 << QIFI_PASSWORD);
+        *state = qs_new_field_start;
+        return p;
+    }
+
+    return p;
+}
+
+static const char* qifi_parser_field_hidden(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+{
+    if (*p == ';') {
+        *field |= (1 << QIFI_HIDDEN);
+        *state = qs_new_field_start;
+        parser->ssid_hidden = false;
+        return p;
+    }
+
+    if (p + QIFI_HIDDEN_LEN_MAX > bufend) {
+        *state = qs_dead;
+        return p;
+    }
+
+    if (strncmp(p, QIFI_HIDDEN_TRUE, strlen(QIFI_HIDDEN_TRUE)) == 0) {
+        *field |= (1 << QIFI_HIDDEN);
+        *state = qs_new_field_start;
+        p += strlen(QIFI_HIDDEN_TRUE) - 1;
+        parser->ssid_hidden = true;
+    } else if (strncmp(p, QIFI_HIDDEN_FALSE, strlen(QIFI_HIDDEN_FALSE)) == 0) {
+        *field |= (1 << QIFI_HIDDEN);
+        *state = qs_new_field_start;
+        p += strlen(QIFI_HIDDEN_FALSE) - 1;
+        parser->ssid_hidden = false;
+    } else {
+        *state = qs_dead;
+    }
+
+    return p;
+}
+
 static const char* qifi_parser_state_qs_new_field(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
 {
     switch (*p) {
-    case 'T':   // T:nopass
-        if (p + QIFI_AUTH_LEN_MAX > bufend) {
-            *state = qs_dead;
-            break;
-        }
-
-        if (strncmp(p, QIFI_AUTH_WEP, strlen(QIFI_AUTH_WEP)) == 0) {
-            *field |= (1 << QIFI_AUTH_TYPE);
-            *state = qs_new_field_start;
-            p += strlen(QIFI_AUTH_WEP) - 1;
-            parser->type = QIFI_WEP;
-        } else if (strncmp(p, QIFI_AUTH_WPA, strlen(QIFI_AUTH_WPA)) == 0) {
-            *field |= (1 << QIFI_AUTH_TYPE);
-            *state = qs_new_field_start;
-            p += strlen(QIFI_AUTH_WPA) - 1;
-            parser->type = QIFI_WPA;
-        } else if (strncmp(p, QIFI_AUTH_NOPASS, strlen(QIFI_AUTH_NOPASS)) == 0) {
-            *field |= (1 << QIFI_AUTH_TYPE);
-            *state = qs_new_field_start;
-            p += strlen(QIFI_AUTH_NOPASS) - 1;
-            parser->type = QIFI_NOPASS;
-        } else if (strncmp(p, QIFI_AUTH_OMIT, strlen(QIFI_AUTH_OMIT)) == 0) {
-            *field |= (1 << QIFI_AUTH_TYPE);
-            *state = qs_new_field_start;
-            p += strlen(QIFI_AUTH_OMIT) - 1;
-            parser->type = QIFI_OMIT;
-        } else {
-            *state = qs_dead;
-            break;
-        }
+    case 'T':   // T:<type>;
+        p = qifi_parser_field_auth_type(p, bufend, field, state, parser);
         break;
 
     case 'S':   // S:<ssid>;
-        
+        p = qifi_parser_field_ssid(p, bufend, field, state, parser);
+        break;
 
     case 'P':   // P:<password>;
-    
+        p = qifi_parser_field_password(p, bufend, field, state, parser);
+        break;
+
     case 'H':   // H:true;
+        p = qifi_parser_field_hidden(p, bufend, field, state, parser);
+        break;
 
     case ';':   // H:false;
+        p = qifi_parser_field_hidden(p, bufend, field, state, parser);
+        break;
 
     default:
         state = qs_dead;

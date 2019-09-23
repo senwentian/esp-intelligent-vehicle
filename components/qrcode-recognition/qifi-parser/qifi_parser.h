@@ -34,6 +34,9 @@ extern "C" {
 #define QIFI_STRING_MAX             128
 #define QIFI_STRING_MIN             16
 
+#define QIFI_SSID_LEN               32
+#define QIFI_PASSWORD_LEN           64
+
 #define ESP_ERR_QIFI_BASE           0x16000  /*!< Starting number of QiFi error codes */
 #define ESP_ERR_QIFI_INVLALID_ARGS  (ESP_ERR_QIFI_BASE + 1)
 #define ESP_ERR_QIFI_NO_SCHEME      (ESP_ERR_QIFI_BASE + 2)
@@ -78,9 +81,9 @@ more details see as: https://github.com/zxing/zxing/wiki/Barcode-Contents#wi-fi-
 typedef struct {
     auth_type_t type:8;
     bool ssid_hidden;
-    uint8_t ssid[32];
+    uint8_t ssid[QIFI_SSID_LEN];
     uint8_t ssid_len;
-    uint8_t password[64];
+    uint8_t password[QIFI_PASSWORD_LEN];
     uint8_t password_len;
 } qifi_parser_t;
 

@@ -28,6 +28,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdbool.h>
 #include "esp_err.h"
 
 #define QIFI_STRING_MAX             128
@@ -40,6 +41,7 @@ extern "C" {
 #define ESP_ERR_QIFI_NO_SSID        (ESP_ERR_QIFI_BASE + 4)
 #define ESP_ERR_QIFI_NO_PASSWORD    (ESP_ERR_QIFI_BASE + 5)
 #define ESP_ERR_QIFI_NO_HIDDEN      (ESP_ERR_QIFI_BASE + 6)
+#define ESP_ERR_QIFI_PARSE_FAILED   (ESP_ERR_QIFI_BASE + 7)
 
 typedef enum {
     QIFI_WEP,

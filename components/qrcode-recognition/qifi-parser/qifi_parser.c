@@ -313,7 +313,7 @@ static const char* qifi_parser_state_qs_new_field(const char* p, const char* buf
         break;
 
     default:
-        state = qs_dead;
+        *state = qs_dead;
         break;
     }
 

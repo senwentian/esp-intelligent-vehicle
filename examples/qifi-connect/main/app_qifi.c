@@ -34,10 +34,11 @@
 #include "quirc.h"
 
 #define PRINT_QR 1
+#define QIFI_CONNECT_TIMEOUT_MS     30000   // ms
 
 typedef enum {
     SKR_STATE_MIN = 0,
-    SKR_SCANNING,
+    SKR_QR_SCANNING,
     SKR_QIFI_STRING_PARSE_OK,
     SKR_QIFI_STRING_PARSE_FAIL,
     SKR_WIFI_CONNECTING,
@@ -208,6 +209,15 @@ static void dump_info(struct quirc *q, uint8_t count)
     }
 }
 
+static void wifi_connect_cb(void* arg)
+{
+    skr_state_t state = qifi_get_skr_state();
+
+    if (state != SKR_WIFI_GOT_IP) {
+        qifi_set_skr_state(SKR_WIFI_CONNECT_TIMEOUT);
+    }
+}
+
 void qifi_task(void *parameter)
 {
     struct quirc *qr_recognizer = NULL;
@@ -218,6 +228,14 @@ void qifi_task(void *parameter)
     // Save image width and height, avoid allocate memory repeatly.
     uint16_t old_width = 0;
     uint16_t old_height = 0;
+    esp_timer_handle_t wifi_connect_timer;
+
+    const esp_timer_create_args_t wifi_connect_timer_cfg = {
+            .callback = &wifi_connect_cb,
+            .name = "wifi-connect"
+    };
+    
+    ESP_ERROR_CHECK(esp_timer_create(&wifi_connect_timer_cfg, &wifi_connect_timer));
 
     initialise_wifi();
 
@@ -243,16 +261,12 @@ void qifi_task(void *parameter)
     while (1) {
         state = qifi_get_skr_state();
 
-        if (state == SKR_WIFI_GOT_IP) {
-            break;
-        }
-
         switch (state) {
         case SKR_STATE_MIN:
-            qifi_set_skr_state(SKR_SCANNING);
+            qifi_set_skr_state(SKR_QR_SCANNING);
             break;
 
-        case SKR_SCANNING:
+        case SKR_QR_SCANNING:
             // Capture a frame
             fb = esp_camera_fb_get();
             if (!fb) {
@@ -291,29 +305,36 @@ void qifi_task(void *parameter)
             break;
 
         case SKR_QIFI_STRING_PARSE_FAIL:
-            qifi_set_skr_state(SKR_SCANNING);
+            qifi_set_skr_state(SKR_QR_SCANNING);
             break;
 
         case SKR_QIFI_STRING_PARSE_OK:
             qifi_connect_wifi(&parser);
             qifi_set_skr_state(SKR_WIFI_CONNECTING);
+            ESP_ERROR_CHECK(esp_timer_start_once(wifi_connect_timer, (QIFI_CONNECT_TIMEOUT_MS * 1000)));
             break;
 
         case SKR_WIFI_CONNECTING:
-            // 
             break;
 
         case SKR_WIFI_CONNECTED:
             break;
 
         case SKR_WIFI_CONNECT_TIMEOUT:
-            qifi_set_skr_state(SKR_SCANNING);
+            qifi_set_skr_state(SKR_QR_SCANNING);
+            ESP_ERROR_CHECK(esp_timer_stop(wifi_connect_timer));
             break;
 
         case SKR_WIFI_GOT_IP:
+            ESP_ERROR_CHECK(esp_timer_stop(wifi_connect_timer));
+            ESP_ERROR_CHECK(esp_timer_delete(wifi_connect_timer));
             break;
 
         default:
+            break;
+        }
+
+        if (state == SKR_WIFI_GOT_IP) {
             break;
         }
 
@@ -329,4 +350,3 @@ void start_qifi_task(void)
 {
     xTaskCreate(qifi_task, "qifi_task", 1024 * 40, NULL, 5, NULL);
 }
-

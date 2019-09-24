@@ -47,7 +47,7 @@
 
 #define QIFI_HIDDEN_TRUE        "H:true;"
 #define QIFI_HIDDEN_FALSE       "H:false;"
-#define QIFI_HIDDEN_LEN_MAX     strlen(QIFI_HIDDEN_FALSE)
+#define QIFI_HIDDEN_LEN_MIN     strlen(QIFI_HIDDEN_TRUE)
 
 typedef enum {
     QIFI_SCHEME = 0,
@@ -267,7 +267,7 @@ static const char* qifi_parser_field_hidden(const char* p, const char* bufend, q
         return p;
     }
 
-    if (p + QIFI_HIDDEN_LEN_MAX > bufend) {
+    if (p + QIFI_HIDDEN_LEN_MIN > bufend) {
         *state = qs_dead;
         return p;
     }
@@ -356,5 +356,6 @@ esp_err_t qifi_parser_parse(const char *buf, size_t buflen, qifi_parser_t* parse
         }
     }
 
+    ESP_LOGD(TAG, "field:0x%x", field);
     return qifi_parser_result(state, field);
 }

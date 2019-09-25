@@ -49,6 +49,7 @@ class Resquest(BaseHTTPRequestHandler):
 
         self.pic = esp_open_image()
         self.pic.write(pic_data)
+        self.pic.close()
 
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')

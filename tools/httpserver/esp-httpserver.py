@@ -53,11 +53,12 @@ class Resquest(BaseHTTPRequestHandler):
 
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
+        self.send_header('Content-Length', '0')
         self.end_headers()
         self.wfile.write('')
 
 if __name__ == '__main__':
-    host = ('127.0.0.1', 8070)
+    host = ('192.168.3.63', 8070)
     server = HTTPServer(host, Resquest)
     print("Starting server, listen at: %s:%s" % host)
     server.serve_forever()

@@ -49,7 +49,6 @@ esp_err_t app_camera_init(void)
         return ESP_FAIL;
     }
 
-#if CONFIG_CAMERA_MODEL_CUSTOM
     /* IO13, IO14 is designed for JTAG by default,
      * to use it as generalized input,
      * firstly declair it as pullup input */
@@ -62,8 +61,8 @@ esp_err_t app_camera_init(void)
     gpio_config(&conf);
     conf.pin_bit_mask = 1LL << 14;
     gpio_config(&conf);
-#endif
 
+    // Camera Config
     config->ledc_channel = LEDC_CHANNEL_0;
     config->ledc_timer = LEDC_TIMER_0;
     config->pin_d0 = Y2_GPIO_NUM;
@@ -83,7 +82,7 @@ esp_err_t app_camera_init(void)
     config->pin_pwdn = PWDN_GPIO_NUM;
     config->pin_reset = RESET_GPIO_NUM;
     // Only support 10 MHz current. Camera will output bad image when XCLK is 20 MHz.
-    config->xclk_freq_hz = 10000000;
+    config->xclk_freq_hz = 20000000;    // 10000000
     config->pixel_format = CAMERA_PIXEL_FORM;
     config->frame_size = CAMERA_FRAME_SIZE;
     config->jpeg_quality = 10;

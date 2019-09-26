@@ -32,6 +32,11 @@ extern "C" {
 */
 void start_qifi_task(void);
 
+/**
+ * @brief     Initialize WiFi
+*/
+void initialise_wifi(void);
+
 #ifdef __cplusplus
 }
 #endif

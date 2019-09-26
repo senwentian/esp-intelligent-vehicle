@@ -43,6 +43,8 @@ void app_main()
 
     ESP_ERROR_CHECK(ret);
 
+    initialise_wifi();
+
     // Initialize camera
     if (app_camera_init() != ESP_OK) {
         ESP_LOGE(TAG, "camera init failed, ready to restart..");

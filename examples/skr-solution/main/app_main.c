@@ -21,22 +21,50 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#pragma once
+#include "nvs_flash.h"
+#include "esp_system.h"
+#include "esp_err.h"
+#include "esp_wifi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "app_camera.h"
+#include "app_qifi.h"
+#include "app_gpio.h"
+#include "esp_log.h"
 
-/**
- * @brief     Start QiFi task
-*/
-void start_qifi_task(void);
+static const char *TAG = "main";
 
-/**
- * @brief     Initialize WiFi
-*/
-void initialise_wifi(void);
-
-#ifdef __cplusplus
+static void skr_start_wifi_connect(wifi_config_t* config)
+{
+    ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, config) );
+    ESP_ERROR_CHECK( esp_wifi_start() );
 }
-#endif
+
+void app_main()
+{
+    wifi_config_t wifi_config;
+
+    // Initialize flash
+    esp_err_t ret = nvs_flash_init();
+
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+
+    ESP_ERROR_CHECK(ret);
+
+    app_gpio_init();
+
+    app_initialise_wifi();
+
+    ret = esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_config);
+
+    if (ret == ESP_OK && wifi_config.sta.ssid[0] != 0) {
+        ESP_LOGI(TAG, "Connect to SSID:%s Password:%s", wifi_config.sta.ssid, wifi_config.sta.password);
+        skr_start_wifi_connect(&wifi_config);
+        skr_start_app_capture_task();
+    } else {
+        ESP_LOGI(TAG, "Start QiFi netconfig");
+        skr_start_app_qifi_task();
+    }
+}

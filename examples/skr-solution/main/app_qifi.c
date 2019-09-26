@@ -29,13 +29,15 @@
 #include "esp_event_loop.h"
 #include "esp_log.h"
 #include "esp_http_client.h"
+#include "sensor.h"
 
 #include "app_camera.h"
+#include "app_qifi.h"
 #include "qifi_parser.h"
 #include "quirc.h"
 
-#define PRINT_QR 1
-#define QIFI_CONNECT_TIMEOUT_MS     30000   // ms
+#define APP_QIFI_PRINT_QR 1
+#define APP_QIFI_CONNECT_TIMEOUT_MS     30000   // ms
 
 typedef enum {
     SKR_STATE_MIN = 0,
@@ -52,16 +54,17 @@ typedef enum {
 
 static skr_state_t s_skr_state;
 static qifi_parser_t parser;
-static esp_timer_handle_t wifi_connect_timer;
+static esp_timer_handle_t app_wifi_connect_timer;
+static esp_http_client_handle_t http_client;
 
 static char *TAG = "app-qifi";
 
-void qifi_set_skr_state(skr_state_t state)
+static void app_qifi_set_skr_state(skr_state_t state)
 {
     s_skr_state = state;
 }
 
-skr_state_t qifi_get_skr_state(void)
+static skr_state_t app_qifi_get_skr_state(void)
 {
     return s_skr_state;
 }
@@ -74,11 +77,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         break;
     
     case SYSTEM_EVENT_STA_CONNECTED:
-        qifi_set_skr_state(SKR_WIFI_CONNECTED);
+        app_qifi_set_skr_state(SKR_WIFI_CONNECTED);
         break;
 
     case SYSTEM_EVENT_STA_GOT_IP:
-        qifi_set_skr_state(SKR_WIFI_GOT_IP);
+        app_qifi_set_skr_state(SKR_WIFI_GOT_IP);
         break;
 
     case SYSTEM_EVENT_STA_DISCONNECTED:
@@ -91,7 +94,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-void initialise_wifi(void)
+void app_initialise_wifi(void)
 {
     tcpip_adapter_init();
     ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
@@ -134,7 +137,7 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-static void qifi_connect_wifi(qifi_parser_t* parser)
+static void app_qifi_connect_wifi(qifi_parser_t* parser)
 {
     wifi_config_t wifi_config;
     memset(&wifi_config, 0x0, sizeof(wifi_config_t));
@@ -148,7 +151,7 @@ static void qifi_connect_wifi(qifi_parser_t* parser)
     ESP_ERROR_CHECK( esp_wifi_start() );
 }
 
-static const char *data_type_str(int dt)
+static const char *app_data_type_str(int dt)
 {
     switch (dt) {
     case QUIRC_DATA_TYPE_NUMERIC:
@@ -163,7 +166,7 @@ static const char *data_type_str(int dt)
     return "unknown";
 }
 
-static void dump_cells(const struct quirc_code *code)
+static void app_dump_cells(const struct quirc_code *code)
 {
     int u = 0, v = 0;
 
@@ -188,22 +191,22 @@ static void dump_cells(const struct quirc_code *code)
     }
 }
 
-static void dump_data(const struct quirc_data *data)
+static void app_dump_data(const struct quirc_data *data)
 {
     printf("    Version: %d\n", data->version);
     printf("    ECC level: %c\n", "MLHQ"[data->ecc_level]);
     printf("    Mask: %d\n", data->mask);
     printf("    Data type: %d (%s)\n", data->data_type,
-           data_type_str(data->data_type));
+           app_data_type_str(data->data_type));
     printf("    Length: %d\n", data->payload_len);
     printf("\033[31m    Payload: %s\n", data->payload);
 
     qifi_parser_init(&parser);
 
     if (qifi_parser_parse((const char*)(data->payload), data->payload_len, &parser) == ESP_OK) {
-        qifi_set_skr_state(SKR_QIFI_STRING_PARSE_OK);
+        app_qifi_set_skr_state(SKR_QIFI_STRING_PARSE_OK);
     } else {
-        qifi_set_skr_state(SKR_QIFI_STRING_PARSE_FAIL);
+        app_qifi_set_skr_state(SKR_QIFI_STRING_PARSE_FAIL);
     }
 
     if (data->eci) {
@@ -212,7 +215,7 @@ static void dump_data(const struct quirc_data *data)
     printf("\033[0m\n");
 }
 
-static void dump_info(struct quirc *q, uint8_t count)
+static void app_dump_info(struct quirc *q, uint8_t count)
 {
     printf("%d QR-codes found:\n\n", count);
     for (int i = 0; i < count; i++) {
@@ -225,8 +228,8 @@ static void dump_info(struct quirc *q, uint8_t count)
         //Decode a QR-code, returning the payload data.
         quirc_decode_error_t err = quirc_decode(&code, &data);
 
-#if PRINT_QR
-        dump_cells(&code);
+#if APP_QIFI_PRINT_QR
+        app_dump_cells(&code);
         printf("\n");
 #endif
 
@@ -239,18 +242,18 @@ static void dump_info(struct quirc *q, uint8_t count)
                 printf(" (%d,%d)", code.corners[u].x, code.corners[u].y);
             }
             printf("\n");
-            dump_data(&data);
+            app_dump_data(&data);
         }
         printf("\n");
     }
 }
 
-static void wifi_connect_cb(void* arg)
+static void app_wifi_connect_cb(void* arg)
 {
-    skr_state_t state = qifi_get_skr_state();
+    skr_state_t state = app_qifi_get_skr_state();
 
     if (state < SKR_WIFI_GOT_IP) {
-        qifi_set_skr_state(SKR_WIFI_CONNECT_TIMEOUT);
+        app_qifi_set_skr_state(SKR_WIFI_CONNECT_TIMEOUT);
     }
 }
 
@@ -295,34 +298,30 @@ static esp_err_t app_qrcode_scan(struct quirc *qr_recognizer)
     }
 
     // Print information of QR-code
-    dump_info(qr_recognizer, id_count);
+    app_dump_info(qr_recognizer, id_count);
     esp_camera_fb_return(fb);
     return ESP_OK;
 }
 
-
-
 static void app_create_wifi_connect_timer(void)
 {
     const esp_timer_create_args_t wifi_connect_timer_cfg = {
-            .callback = &wifi_connect_cb,
+            .callback = &app_wifi_connect_cb,
             .name = "wifi-connect"
     };
     
-    ESP_ERROR_CHECK(esp_timer_create(&wifi_connect_timer_cfg, &wifi_connect_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&wifi_connect_timer_cfg, &app_wifi_connect_timer));
 }
 
 static void app_start_wifi_connect_timer(void)
 {
-    ESP_ERROR_CHECK(esp_timer_start_once(wifi_connect_timer, (QIFI_CONNECT_TIMEOUT_MS * 1000)));
+    ESP_ERROR_CHECK(esp_timer_start_once(app_wifi_connect_timer, (APP_QIFI_CONNECT_TIMEOUT_MS * 1000)));
 }
 
 static void app_stop_wifi_connect_timer(void)
 {
-    ESP_ERROR_CHECK(esp_timer_stop(wifi_connect_timer));
+    ESP_ERROR_CHECK(esp_timer_stop(app_wifi_connect_timer));
 }
-
-static esp_http_client_handle_t http_client;
 
 static void app_init_http_config(void)
 {
@@ -361,8 +360,7 @@ static esp_err_t app_post_capture(void)
     return ESP_OK;
 }
 
-
-void qifi_task(void *parameter)
+void app_qifi_task(void *parameter)
 {
     skr_state_t state;
     struct quirc *qr_recognizer = NULL;
@@ -387,14 +385,12 @@ void qifi_task(void *parameter)
         vTaskDelete(NULL);
     }
 
-    app_create_wifi_connect_timer();
-
     while (1) {
-        state = qifi_get_skr_state();
+        state = app_qifi_get_skr_state();
 
         switch (state) {
         case SKR_STATE_MIN:
-            qifi_set_skr_state(SKR_QR_SCANNING);
+            app_qifi_set_skr_state(SKR_QR_SCANNING);
             break;
 
         case SKR_QR_SCANNING:
@@ -402,12 +398,13 @@ void qifi_task(void *parameter)
             break;
 
         case SKR_QIFI_STRING_PARSE_FAIL:
-            qifi_set_skr_state(SKR_QR_SCANNING);
+            app_qifi_set_skr_state(SKR_QR_SCANNING);
             break;
 
         case SKR_QIFI_STRING_PARSE_OK:
-            qifi_connect_wifi(&parser);
-            qifi_set_skr_state(SKR_WIFI_CONNECTING);
+            app_qifi_connect_wifi(&parser);
+            app_qifi_set_skr_state(SKR_WIFI_CONNECTING);
+            app_create_wifi_connect_timer();
             app_start_wifi_connect_timer();
             break;
 
@@ -418,21 +415,62 @@ void qifi_task(void *parameter)
             break;
 
         case SKR_WIFI_CONNECT_TIMEOUT:
-            qifi_set_skr_state(SKR_QR_SCANNING);
+            app_qifi_set_skr_state(SKR_QR_SCANNING);
             app_stop_wifi_connect_timer();
             break;
 
         case SKR_WIFI_GOT_IP:
             // Destroy QR-Code recognizer (quirc)
             quirc_destroy(qr_recognizer);
+            break;
 
-            qifi_set_skr_state(SKR_POST_CAPTURE);
-            app_init_http_config();
+        default:
+            break;
+        }
+        
+        if (state == SKR_WIFI_GOT_IP) {
+            break;
+        }
+
+        vTaskDelay(100 / portTICK_RATE_MS);
+    }
+
+    esp_camera_deinit();
+    
+    // esp_camera_init can not be initialzied without reboot
+    // here reboot for a new esp_camera_init()
+    ESP_LOGI(TAG, "ready to restart..");
+    esp_restart();
+
+    vTaskDelete(NULL);
+}
+
+void app_capture_task(void *parameter)
+{
+    skr_state_t state;
+
+    app_init_http_config();
+
+    while (1) {
+        state = app_qifi_get_skr_state();
+
+        switch (state) {
+        case SKR_STATE_MIN:
+        case SKR_QR_SCANNING:
+        case SKR_QIFI_STRING_PARSE_FAIL:
+        case SKR_QIFI_STRING_PARSE_OK:
+        case SKR_WIFI_CONNECTING:
+        case SKR_WIFI_CONNECTED:
+            break;
+
+        case SKR_WIFI_GOT_IP:
+            // Destroy QR-Code recognizer (quirc)
+            app_qifi_set_skr_state(SKR_POST_CAPTURE);
             break;
 
         case SKR_POST_CAPTURE:
             app_post_capture();
-            vTaskDelay(1000 / portTICK_RATE_MS);
+            vTaskDelay(3000 / portTICK_RATE_MS);
             break;
 
         default:
@@ -443,10 +481,28 @@ void qifi_task(void *parameter)
     }
 
     esp_camera_deinit();
+
     vTaskDelete(NULL);
 }
 
-void start_qifi_task(void)
+void skr_start_app_qifi_task(void)
 {
-    xTaskCreate(qifi_task, "qifi_task", 1024 * 40, NULL, 5, NULL);
+    // Initialize camera
+    if (app_camera_init(PIXFORMAT_GRAYSCALE) != ESP_OK) {
+        ESP_LOGE(TAG, "camera init failed, ready to restart..");
+        esp_restart();
+    }
+
+    xTaskCreate(app_qifi_task, "app_qifi_task", 1024 * 50, NULL, 5, NULL);
+}
+
+void skr_start_app_capture_task(void)
+{
+    // Initialize camera
+    if (app_camera_init(PIXFORMAT_JPEG) != ESP_OK) {
+        ESP_LOGE(TAG, "camera init failed, ready to restart..");
+        esp_restart();
+    }
+
+    xTaskCreate(app_capture_task, "app_capture_task", 1024 * 50, NULL, 5, NULL);
 }

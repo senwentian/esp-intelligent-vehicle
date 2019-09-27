@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := qifi-connect
+PROJECT_NAME := skr-solution
 
 export ESP_SKR_PROJECT_PATH := $(realpath ../../)
 

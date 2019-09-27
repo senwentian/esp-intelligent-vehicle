@@ -25,9 +25,6 @@
 #include "esp_camera.h"
 #include "app_camera.h"
 
-#define CAMERA_PIXEL_FORM    PIXFORMAT_GRAYSCALE
-#define CAMERA_FRAME_SIZE    FRAMESIZE_QVGA
-
 static camera_config_t* config;
 
 static const char *TAG = "app_camera";
@@ -37,7 +34,7 @@ camera_config_t* app_get_camera_cfg(void)
     return config;
 }
 
-esp_err_t app_camera_init(void)
+esp_err_t app_camera_init(pixformat_t format)
 {
     if (config) {
         return ESP_FAIL;
@@ -83,8 +80,8 @@ esp_err_t app_camera_init(void)
     config->pin_reset = RESET_GPIO_NUM;
     // Only support 10 MHz current. Camera will output bad image when XCLK is 20 MHz.
     config->xclk_freq_hz = 20000000;    // 10000000
-    config->pixel_format = CAMERA_PIXEL_FORM;
-    config->frame_size = CAMERA_FRAME_SIZE;
+    config->pixel_format = format;
+    config->frame_size = FRAMESIZE_QVGA;
     config->jpeg_quality = 10;
     config->fb_count = 1;
 

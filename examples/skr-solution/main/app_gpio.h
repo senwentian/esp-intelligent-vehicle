@@ -21,36 +21,19 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#include "esp_system.h"
-#include "esp_log.h"
-#include "esp_err.h"
+#pragma once
 
-#include "app_camera.h"
-#include "app_qifi.h"
-#include "nvs_flash.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-static const char* TAG = "main";
+/**
+ * @brief   initialize gpio
+ * 
+ * @noreturn
+*/
+void app_gpio_init(void);
 
-void app_main()
-{
-    // Initialize flash
-    esp_err_t ret = nvs_flash_init();
-
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
-    }
-
-    ESP_ERROR_CHECK(ret);
-
-    initialise_wifi();
-
-    // Initialize camera
-    if (app_camera_init() != ESP_OK) {
-        ESP_LOGE(TAG, "camera init failed, ready to restart..");
-        esp_restart();
-    }
-
-    // Start QiFi task
-    start_qifi_task();
+#ifdef __cplusplus
 }
+#endif

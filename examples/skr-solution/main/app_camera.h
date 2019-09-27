@@ -136,7 +136,7 @@ extern "C" {
  *          - ESP_OK if initialize OK
  *          - others, initialize failed
 */
-esp_err_t app_camera_init(void);
+esp_err_t app_camera_init(pixformat_t format);
 
 /**
  * @brief     get camera configuration

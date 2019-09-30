@@ -107,7 +107,7 @@ void qifi_parser_init(qifi_parser_t* parser);
  *          - ESP_OK: if parse OK
  *          - others: see as ESP_ERR_QIFI_
 */
-esp_err_t qifi_parser_parse(const char *buf, size_t buflen, qifi_parser_t* parser);
+esp_err_t qifi_parser_parse(qifi_parser_t* parser, const char *buf, size_t buflen);
 
 
 #ifdef __cplusplus

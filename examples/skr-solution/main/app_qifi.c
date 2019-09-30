@@ -203,7 +203,7 @@ static void app_dump_data(const struct quirc_data *data)
 
     qifi_parser_init(&parser);
 
-    if (qifi_parser_parse((const char*)(data->payload), data->payload_len, &parser) == ESP_OK) {
+    if (qifi_parser_parse(&parser, (const char*)(data->payload), data->payload_len) == ESP_OK) {
         app_qifi_set_skr_state(SKR_QIFI_STRING_PARSE_OK);
     } else {
         app_qifi_set_skr_state(SKR_QIFI_STRING_PARSE_FAIL);

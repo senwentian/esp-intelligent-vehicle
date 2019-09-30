@@ -320,7 +320,7 @@ static const char* qifi_parser_state_qs_new_field(const char* p, const char* buf
     return p;
 }
 
-esp_err_t qifi_parser_parse(const char *buf, size_t buflen, qifi_parser_t* parser)
+esp_err_t qifi_parser_parse(qifi_parser_t* parser, const char *buf, size_t buflen)
 {
     qifi_field_t field = 0x0;
     const char *p = NULL;

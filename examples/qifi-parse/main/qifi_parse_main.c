@@ -33,7 +33,7 @@ void app_main()
     for (int i = 0; i < test_counts; ++i) {
         qifi_parser_init(&parser);
         ESP_LOGI(TAG, "Start Parse String[%d]: %s", i, string[i]);
-        ret = qifi_parser_parse(string[i], strlen(string[i]), &parser);
+        ret = qifi_parser_parse(&parser, string[i], strlen(string[i]));
         if (ret == ESP_OK) {
             ESP_LOGI(TAG, "String[%d] Parse OK!\n------\nTYPE:%d\nSSID(%d):%.*s\nPASSWORD(%d):%.*s\nHIDDEN:%d\n------",
                 i, parser.type, parser.ssid_len, parser.ssid_len, parser.ssid,

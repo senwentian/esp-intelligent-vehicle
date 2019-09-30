@@ -51,13 +51,13 @@ static void gpio_isr_handler(void *arg)
     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
 }
 
-static void app_press_factory_button(void* param)
+static void app_press_factory_button(void *param)
 {
     if (gpio_get_level(APP_PRESS_GPIO) == 0) {
         ESP_LOGI(TAG, "Restore the Factory Settings..");
 
-        ESP_ERROR_CHECK( esp_wifi_restore() ); 
-        
+        ESP_ERROR_CHECK(esp_wifi_restore());
+
         printf("ready to restart..\r\n");
         esp_restart();
         printf("restarted?\n");
@@ -103,6 +103,6 @@ void app_gpio_init(void)
     xTaskCreate(app_gpio_task, "app_gpio_task", 1024 * 4, NULL, 10, NULL);
     gpio_install_isr_service(0);
     gpio_isr_handler_add(APP_PRESS_GPIO, gpio_isr_handler, (void *) APP_PRESS_GPIO);
-    
+
     s_app_press_factory_timer = xTimerCreate("restore-tmr", (3000 / portTICK_RATE_MS), pdTRUE, NULL, app_press_factory_button);
 }

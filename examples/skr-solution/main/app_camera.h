@@ -129,9 +129,9 @@ extern "C" {
 
 /**
  * @brief     Init camera by default configuration
- * 
+ *
  * @noparam
- * 
+ *
  * @return
  *          - ESP_OK if initialize OK
  *          - others, initialize failed
@@ -140,12 +140,12 @@ esp_err_t app_camera_init(pixformat_t format);
 
 /**
  * @brief     get camera configuration
- * 
+ *
  * @noparam
- * 
+ *
  * @return    struct of camera config
 */
-camera_config_t* app_get_camera_cfg(void);
+camera_config_t *app_get_camera_cfg(void);
 
 #ifdef __cplusplus
 }

@@ -62,9 +62,9 @@ Scanning such a code would, after prompting the user, configure the device's Wi-
 WIFI:T:WPA;S:mynetwork;P:mypass;;
 
 --------------------------------------------------------------------------------------------------------
-Parameter       Example	        Description
+Parameter       Example         Description
 --------------------------------------------------------------------------------------------------------
-    T           WPA	        Authentication type; can be WEP or WPA, or 'nopass' for no password. Or, omit for no password.
+    T           WPA         Authentication type; can be WEP or WPA, or 'nopass' for no password. Or, omit for no password.
     S           mynetwork   Network SSID. Required.
                             Enclose in double quotes if it is an ASCII name, but could be interpreted as hex (i.e. "ABCD")
     P           mypass      Password, ignored if T is "nopass" (in which case it may be omitted).
@@ -79,7 +79,7 @@ more details see as: https://github.com/zxing/zxing/wiki/Barcode-Contents#wi-fi-
 */
 
 typedef struct {
-    auth_type_t type:8;
+    auth_type_t type: 8;
     bool ssid_hidden;
     uint8_t ssid[QIFI_SSID_LEN];
     uint8_t ssid_len;
@@ -89,25 +89,25 @@ typedef struct {
 
 /**
  * @brief       Init QiFi parser
- * 
+ *
  * @param[in]   parser: a configuration to init
- * 
+ *
  * @noreturn
 */
-void qifi_parser_init(qifi_parser_t* parser);
+void qifi_parser_init(qifi_parser_t *parser);
 
 /**
  * @brief       Parse QRCode of WiFi string
- * 
+ *
  * @param[in]   buf: WiFi string
  * @param[in]   buflen: WiFi string length
  * @param[out]  parser: parse result
- * 
+ *
  * @return
  *          - ESP_OK: if parse OK
  *          - others: see as ESP_ERR_QIFI_
 */
-esp_err_t qifi_parser_parse(qifi_parser_t* parser, const char *buf, size_t buflen);
+esp_err_t qifi_parser_parse(qifi_parser_t *parser, const char *buf, size_t buflen);
 
 
 #ifdef __cplusplus

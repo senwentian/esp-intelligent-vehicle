@@ -25,11 +25,11 @@
 #include "esp_camera.h"
 #include "app_camera.h"
 
-static camera_config_t* config;
+static camera_config_t *config;
 
 static const char *TAG = "app_camera";
 
-camera_config_t* app_get_camera_cfg(void)
+camera_config_t *app_get_camera_cfg(void)
 {
     return config;
 }

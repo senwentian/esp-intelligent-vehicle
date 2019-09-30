@@ -71,11 +71,11 @@ static skr_state_t app_qifi_get_skr_state(void)
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
-    switch(event->event_id) {
+    switch (event->event_id) {
     case SYSTEM_EVENT_STA_START:
         esp_wifi_connect();
         break;
-    
+
     case SYSTEM_EVENT_STA_CONNECTED:
         app_qifi_set_skr_state(SKR_WIFI_CONNECTED);
         break;
@@ -91,64 +91,73 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     default:
         break;
     }
+
     return ESP_OK;
 }
 
 void app_initialise_wifi(void)
 {
     tcpip_adapter_init();
-    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_FLASH) );
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
 }
 
 static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
-    switch(evt->event_id) {
-        case HTTP_EVENT_ERROR:
-            ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
-            break;
-        case HTTP_EVENT_ON_CONNECTED:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
-            break;
-        case HTTP_EVENT_HEADER_SENT:
-            ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
-            break;
-        case HTTP_EVENT_ON_HEADER:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
-            break;
-        case HTTP_EVENT_ON_DATA:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-            if (!esp_http_client_is_chunked_response(evt->client)) {
-                // Write out data
-                // printf("%.*s", evt->data_len, (char*)evt->data);
-            }
+    switch (evt->event_id) {
+    case HTTP_EVENT_ERROR:
+        ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
+        break;
 
-            break;
-        case HTTP_EVENT_ON_FINISH:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
-            break;
-        case HTTP_EVENT_DISCONNECTED:
-            ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
-            break;
+    case HTTP_EVENT_ON_CONNECTED:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
+        break;
+
+    case HTTP_EVENT_HEADER_SENT:
+        ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
+        break;
+
+    case HTTP_EVENT_ON_HEADER:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+        break;
+
+    case HTTP_EVENT_ON_DATA:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+
+        if (!esp_http_client_is_chunked_response(evt->client)) {
+            // Write out data
+            // printf("%.*s", evt->data_len, (char*)evt->data);
+        }
+
+        break;
+
+    case HTTP_EVENT_ON_FINISH:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
+        break;
+
+    case HTTP_EVENT_DISCONNECTED:
+        ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
+        break;
     }
+
     return ESP_OK;
 }
 
-static void app_qifi_connect_wifi(qifi_parser_t* parser)
+static void app_qifi_connect_wifi(qifi_parser_t *parser)
 {
     wifi_config_t wifi_config;
     memset(&wifi_config, 0x0, sizeof(wifi_config_t));
-    strncpy((char*)(wifi_config.sta.ssid), (char*)(parser->ssid), sizeof(wifi_config.sta.ssid));
+    strncpy((char *)(wifi_config.sta.ssid), (char *)(parser->ssid), sizeof(wifi_config.sta.ssid));
 
     if (parser->type < QIFI_NOPASS) {
-        strncpy((char*)(wifi_config.sta.password), (char*)(parser->password), sizeof(wifi_config.sta.password));
+        strncpy((char *)(wifi_config.sta.password), (char *)(parser->password), sizeof(wifi_config.sta.password));
     }
 
-    ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-    ESP_ERROR_CHECK( esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
 }
 
 static const char *app_data_type_str(int dt)
@@ -156,13 +165,17 @@ static const char *app_data_type_str(int dt)
     switch (dt) {
     case QUIRC_DATA_TYPE_NUMERIC:
         return "NUMERIC";
+
     case QUIRC_DATA_TYPE_ALPHA:
         return "ALPHA";
+
     case QUIRC_DATA_TYPE_BYTE:
         return "BYTE";
+
     case QUIRC_DATA_TYPE_KANJI:
         return "KANJI";
     }
+
     return "unknown";
 }
 
@@ -171,23 +184,27 @@ static void app_dump_cells(const struct quirc_code *code)
     int u = 0, v = 0;
 
     printf("    %d cells, corners:", code->size);
+
     for (u = 0; u < 4; u++) {
         printf(" (%d,%d)", code->corners[u].x, code->corners[u].y);
     }
+
     printf("\n");
 
     for (v = 0; v < code->size; v++) {
-		printf("\033[0m    ");
+        printf("\033[0m    ");
+
         for (u = 0; u < code->size; u++) {
             int p = v * code->size + u;
 
             if (code->cell_bitmap[p >> 3] & (1 << (p & 7))) {
-				printf("\033[40m  ");
+                printf("\033[40m  ");
             } else {
-				printf("\033[47m  ");
+                printf("\033[47m  ");
             }
         }
-		printf("\033[0m\n");
+
+        printf("\033[0m\n");
     }
 }
 
@@ -203,7 +220,7 @@ static void app_dump_data(const struct quirc_data *data)
 
     qifi_parser_init(&parser);
 
-    if (qifi_parser_parse(&parser, (const char*)(data->payload), data->payload_len) == ESP_OK) {
+    if (qifi_parser_parse(&parser, (const char *)(data->payload), data->payload_len) == ESP_OK) {
         app_qifi_set_skr_state(SKR_QIFI_STRING_PARSE_OK);
     } else {
         app_qifi_set_skr_state(SKR_QIFI_STRING_PARSE_FAIL);
@@ -212,12 +229,14 @@ static void app_dump_data(const struct quirc_data *data)
     if (data->eci) {
         printf("\033[31m    ECI: %d\n", data->eci);
     }
+
     printf("\033[0m\n");
 }
 
 static void app_dump_info(struct quirc *q, uint8_t count)
 {
     printf("%d QR-codes found:\n\n", count);
+
     for (int i = 0; i < count; i++) {
         struct quirc_code code;
         struct quirc_data data;
@@ -238,17 +257,20 @@ static void app_dump_info(struct quirc *q, uint8_t count)
         } else {
             printf("  Decoding successful:\n");
             printf("    %d cells, corners:", code.size);
+
             for (uint8_t u = 0; u < 4; u++) {
                 printf(" (%d,%d)", code.corners[u].x, code.corners[u].y);
             }
+
             printf("\n");
             app_dump_data(&data);
         }
+
         printf("\n");
     }
 }
 
-static void app_wifi_connect_cb(void* arg)
+static void app_wifi_connect_cb(void *arg)
 {
     skr_state_t state = app_qifi_get_skr_state();
 
@@ -268,6 +290,7 @@ static esp_err_t app_qrcode_scan(struct quirc *qr_recognizer)
 
     // Capture a frame
     fb = esp_camera_fb_get();
+
     if (!fb) {
         ESP_LOGE(TAG, "Camera capture failed");
         return ESP_FAIL;
@@ -275,6 +298,7 @@ static esp_err_t app_qrcode_scan(struct quirc *qr_recognizer)
 
     if (old_width != fb->width || old_height != fb->height) {
         ESP_LOGI(TAG, "Recognizer(%p) size change w h len: %d, %d, %d", qr_recognizer, fb->width, fb->height, fb->len);
+
         // Resize the QR-code recognizer.
         if (quirc_resize(qr_recognizer, fb->width, fb->height) < 0) {
             ESP_LOGE(TAG, "Resize the QR-code recognizer err.");
@@ -291,6 +315,7 @@ static esp_err_t app_qrcode_scan(struct quirc *qr_recognizer)
 
     // Return the number of QR-codes identified in the last processed image.
     id_count = quirc_count(qr_recognizer);
+
     if (id_count == 0) {
         ESP_LOGW(TAG, "invalid WiFi QR code");
         esp_camera_fb_return(fb);
@@ -306,10 +331,10 @@ static esp_err_t app_qrcode_scan(struct quirc *qr_recognizer)
 static void app_create_wifi_connect_timer(void)
 {
     const esp_timer_create_args_t wifi_connect_timer_cfg = {
-            .callback = &app_wifi_connect_cb,
-            .name = "wifi-connect"
+        .callback = &app_wifi_connect_cb,
+        .name = "wifi-connect"
     };
-    
+
     ESP_ERROR_CHECK(esp_timer_create(&wifi_connect_timer_cfg, &app_wifi_connect_timer));
 }
 
@@ -338,25 +363,27 @@ static esp_err_t app_post_capture(void)
     camera_fb_t *fb = NULL;
     // Capture a frame
     fb = esp_camera_fb_get();
+
     if (!fb) {
         ESP_LOGE(TAG, "Camera capture failed");
         return ESP_FAIL;
     }
+
     printf("captured: %p(%d) w:%d h:%d format:%d\n", fb->buf, fb->len, fb->width, fb->height, fb->format);
 
     // POST
     esp_http_client_set_method(http_client, HTTP_METHOD_POST);
-    esp_http_client_set_post_field(http_client, (const char*)(fb->buf), fb->len);
+    esp_http_client_set_post_field(http_client, (const char *)(fb->buf), fb->len);
     esp_err_t err = esp_http_client_perform(http_client);
 
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %d",
-                esp_http_client_get_status_code(http_client),
-                esp_http_client_get_content_length(http_client));
+                 esp_http_client_get_status_code(http_client),
+                 esp_http_client_get_content_length(http_client));
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
     }
-    
+
     return ESP_OK;
 }
 
@@ -370,7 +397,7 @@ void app_qifi_task(void *parameter)
         vTaskDelete(NULL);
     }
 
-    // Use QVGA Size currently, but quirc can support other frame size.(eg: 
+    // Use QVGA Size currently, but quirc can support other frame size.(eg:
     // FRAMESIZE_QVGA,FRAMESIZE_HQVGA,FRAMESIZE_QCIF,FRAMESIZE_QQVGA2,FRAMESIZE_QQVGA,etc)
     if (camera_config->frame_size > FRAMESIZE_QVGA) {
         ESP_LOGE(TAG, "Camera Frame Size err %d, support maxsize is QVGA", (camera_config->frame_size));
@@ -427,7 +454,7 @@ void app_qifi_task(void *parameter)
         default:
             break;
         }
-        
+
         if (state == SKR_WIFI_GOT_IP) {
             break;
         }
@@ -436,7 +463,7 @@ void app_qifi_task(void *parameter)
     }
 
     esp_camera_deinit();
-    
+
     // esp_camera_init can not be initialzied without reboot
     // here reboot for a new esp_camera_init()
     ESP_LOGI(TAG, "ready to restart..");

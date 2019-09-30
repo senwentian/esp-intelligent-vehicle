@@ -64,9 +64,9 @@ typedef enum {
     qs_new_field_start,
 } qifi_state_t;
 
-static const char* TAG = "qifi";
+static const char *TAG = "qifi";
 
-void qifi_parser_init(qifi_parser_t* parser)
+void qifi_parser_init(qifi_parser_t *parser)
 {
     if (parser) {
         memset(parser, 0x0, sizeof(qifi_parser_t));
@@ -105,15 +105,16 @@ static esp_err_t qifi_parser_result(qifi_state_t state, qifi_field_t field)
     return ESP_OK;
 }
 
-static const char* qifi_parser_state_qs_init(const char *p, const char* bufend, qifi_field_t* field, qifi_state_t* state)
+static const char *qifi_parser_state_qs_init(const char *p, const char *bufend, qifi_field_t *field, qifi_state_t *state)
 {
     if (IS_ALPHA(*p)) {
         *state = qs_scheme_start;
+
         if ((p + strlen(QIFI_SCHEME_STRING) < bufend)
-            && (strncmp(p, QIFI_SCHEME_STRING, strlen(QIFI_SCHEME_STRING)) == 0)) {
-                *field |= (1 << QIFI_SCHEME);
-                *state = qs_new_field_start;
-                p += strlen(QIFI_SCHEME_STRING) - 1;
+                && (strncmp(p, QIFI_SCHEME_STRING, strlen(QIFI_SCHEME_STRING)) == 0)) {
+            *field |= (1 << QIFI_SCHEME);
+            *state = qs_new_field_start;
+            p += strlen(QIFI_SCHEME_STRING) - 1;
         } else {
             *state = qs_dead;
         }
@@ -122,7 +123,7 @@ static const char* qifi_parser_state_qs_init(const char *p, const char* bufend, 
     return p;
 }
 
-static const char* qifi_parser_field_auth_type(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+static const char *qifi_parser_field_auth_type(const char *p, const char *bufend, qifi_field_t *field, qifi_state_t *state, qifi_parser_t *parser)
 {
     if (p + QIFI_AUTH_LEN_MAX > bufend) {
         *state = qs_dead;
@@ -156,7 +157,7 @@ static const char* qifi_parser_field_auth_type(const char* p, const char* bufend
     return p;
 }
 
-static const char* qifi_parser_field_ssid(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+static const char *qifi_parser_field_ssid(const char *p, const char *bufend, qifi_field_t *field, qifi_state_t *state, qifi_parser_t *parser)
 {
     uint8_t index = 0;
 
@@ -207,7 +208,7 @@ static const char* qifi_parser_field_ssid(const char* p, const char* bufend, qif
     return p;
 }
 
-static const char* qifi_parser_field_password(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+static const char *qifi_parser_field_password(const char *p, const char *bufend, qifi_field_t *field, qifi_state_t *state, qifi_parser_t *parser)
 {
     uint8_t index = 0;
 
@@ -258,7 +259,7 @@ static const char* qifi_parser_field_password(const char* p, const char* bufend,
     return p;
 }
 
-static const char* qifi_parser_field_hidden(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+static const char *qifi_parser_field_hidden(const char *p, const char *bufend, qifi_field_t *field, qifi_state_t *state, qifi_parser_t *parser)
 {
     if (*p == ';') {
         *field |= (1 << QIFI_HIDDEN);
@@ -289,7 +290,7 @@ static const char* qifi_parser_field_hidden(const char* p, const char* bufend, q
     return p;
 }
 
-static const char* qifi_parser_state_qs_new_field(const char* p, const char* bufend, qifi_field_t* field, qifi_state_t* state, qifi_parser_t* parser)
+static const char *qifi_parser_state_qs_new_field(const char *p, const char *bufend, qifi_field_t *field, qifi_state_t *state, qifi_parser_t *parser)
 {
     switch (*p) {
     case 'T':   // T:<type>;
@@ -320,12 +321,12 @@ static const char* qifi_parser_state_qs_new_field(const char* p, const char* buf
     return p;
 }
 
-esp_err_t qifi_parser_parse(qifi_parser_t* parser, const char *buf, size_t buflen)
+esp_err_t qifi_parser_parse(qifi_parser_t *parser, const char *buf, size_t buflen)
 {
     qifi_field_t field = 0x0;
     const char *p = NULL;
     qifi_state_t state = qs_init;
-    const char* bufend = buf + buflen;
+    const char *bufend = buf + buflen;
 
     if ((buf == NULL) || (buflen > QIFI_STRING_MAX) || (buflen < QIFI_STRING_MIN) || (parser == NULL)) {
         return ESP_ERR_QIFI_INVLALID_ARGS;

@@ -29,7 +29,7 @@ extern "C" {
 
 /**
  * @brief   initialize gpio
- * 
+ *
  * @noreturn
 */
 void app_gpio_init(void);

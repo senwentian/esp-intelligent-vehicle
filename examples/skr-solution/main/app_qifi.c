@@ -497,6 +497,7 @@ void app_capture_task(void *parameter)
 
         case SKR_POST_CAPTURE:
             app_post_capture();
+
             vTaskDelay(3000 / portTICK_RATE_MS);
             break;
 
@@ -520,7 +521,7 @@ void skr_start_app_qifi_task(void)
         esp_restart();
     }
 
-    xTaskCreate(app_qifi_task, "app_qifi_task", 1024 * 50, NULL, 5, NULL);
+    xTaskCreate(app_qifi_task, "app_qifi_task", 1024 * 32, NULL, 5, NULL);
 }
 
 void skr_start_app_capture_task(void)
@@ -531,5 +532,5 @@ void skr_start_app_capture_task(void)
         esp_restart();
     }
 
-    xTaskCreate(app_capture_task, "app_capture_task", 1024 * 50, NULL, 5, NULL);
+    xTaskCreate(app_capture_task, "app_capture_task", 1024 * 2, NULL, 5, NULL);
 }

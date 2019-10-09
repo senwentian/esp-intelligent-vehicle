@@ -100,7 +100,7 @@ void app_gpio_init(void)
     gpio_set_intr_type(APP_PRESS_GPIO, GPIO_INTR_ANYEDGE);
 
     gpio_evt_queue = xQueueCreate(5, sizeof(uint32_t));
-    xTaskCreate(app_gpio_task, "app_gpio_task", 1024 * 4, NULL, 10, NULL);
+    xTaskCreate(app_gpio_task, "app_gpio_task", 2048, NULL, 10, NULL);
     gpio_install_isr_service(0);
     gpio_isr_handler_add(APP_PRESS_GPIO, gpio_isr_handler, (void *) APP_PRESS_GPIO);
 

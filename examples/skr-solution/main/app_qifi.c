@@ -358,7 +358,7 @@ static void app_init_http_config(void)
     http_client = esp_http_client_init(&config);
 }
 
-static esp_err_t app_post_capture(void)
+esp_err_t app_post_capture(void)
 {
     // TODO: add mutex
     camera_fb_t *fb = NULL;
@@ -371,6 +371,10 @@ static esp_err_t app_post_capture(void)
     }
 
     printf("captured: %p(%d) w:%d h:%d format:%d\n", fb->buf, fb->len, fb->width, fb->height, fb->format);
+
+    if (app_qifi_get_skr_state() < SKR_WIFI_GOT_IP) {
+        return ESP_FAIL;
+    }
 
     // POST
     esp_http_client_set_method(http_client, HTTP_METHOD_POST);

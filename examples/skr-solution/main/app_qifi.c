@@ -36,8 +36,8 @@
 #include "qifi_parser.h"
 #include "quirc.h"
 
-#define APP_QIFI_PRINT_QR 1
-#define APP_QIFI_CONNECT_TIMEOUT_MS     30000   // ms
+#define APP_QIFI_PRINT_QR               CONFIG_APP_QIFI_PRINT_QR
+#define APP_QIFI_CONNECT_TIMEOUT_MS     CONFIG_APP_QIFI_CONNECT_TIMEOUT_MS
 
 typedef enum {
     SKR_STATE_MIN = 0,
@@ -351,7 +351,7 @@ static void app_stop_wifi_connect_timer(void)
 static void app_init_http_config(void)
 {
     esp_http_client_config_t config = {
-        .url = "http://192.168.3.63:8070",
+        .url = CONFIG_APP_HTTP_SERVER_URL,
         .event_handler = _http_event_handler,
     };
 
@@ -360,6 +360,7 @@ static void app_init_http_config(void)
 
 static esp_err_t app_post_capture(void)
 {
+    // TODO: add mutex
     camera_fb_t *fb = NULL;
     // Capture a frame
     fb = esp_camera_fb_get();
@@ -497,8 +498,7 @@ void app_capture_task(void *parameter)
 
         case SKR_POST_CAPTURE:
             app_post_capture();
-
-            vTaskDelay(3000 / portTICK_RATE_MS);
+            vTaskDelay(CONFIG_APP_POST_CAPTURE_INTERVAL_MS / portTICK_RATE_MS);
             break;
 
         default:
@@ -521,7 +521,7 @@ void skr_start_app_qifi_task(void)
         esp_restart();
     }
 
-    xTaskCreate(app_qifi_task, "app_qifi_task", 1024 * 32, NULL, 5, NULL);
+    xTaskCreate(app_qifi_task, "app_qifi_task", CONFIG_APP_QIFI_TASK_STACK, NULL, 5, NULL);
 }
 
 void skr_start_app_capture_task(void)
@@ -532,5 +532,5 @@ void skr_start_app_capture_task(void)
         esp_restart();
     }
 
-    xTaskCreate(app_capture_task, "app_capture_task", 1024 * 2, NULL, 5, NULL);
+    xTaskCreate(app_capture_task, "app_capture_task", CONFIG_APP_CAPTURE_TASK_STACK, NULL, 5, NULL);
 }

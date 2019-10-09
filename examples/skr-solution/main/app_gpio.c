@@ -35,9 +35,9 @@
 #include "app_gpio.h"
 #include "esp_wifi.h"
 
-#define APP_PRESS_GPIO     0
+#define APP_PRESS_GPIO     CONFIG_APP_PRESS_GPIO
 #define APP_PRESS_GPIO_INPUT_PIN_SEL  (1ULL << APP_PRESS_GPIO)
-#define ANTI_SHAKE_TIME     100 // ms
+#define ANTI_SHAKE_TIME     CONFIG_APP_ANTI_SHAKE_TIME_MS // ms
 
 static xQueueHandle gpio_evt_queue;
 static TimerHandle_t  s_app_press_factory_timer;
@@ -55,12 +55,8 @@ static void app_press_factory_button(void *param)
 {
     if (gpio_get_level(APP_PRESS_GPIO) == 0) {
         ESP_LOGI(TAG, "Restore the Factory Settings..");
-
         ESP_ERROR_CHECK(esp_wifi_restore());
-
-        printf("ready to restart..\r\n");
         esp_restart();
-        printf("restarted?\n");
     }
 }
 
@@ -100,9 +96,10 @@ void app_gpio_init(void)
     gpio_set_intr_type(APP_PRESS_GPIO, GPIO_INTR_ANYEDGE);
 
     gpio_evt_queue = xQueueCreate(5, sizeof(uint32_t));
-    xTaskCreate(app_gpio_task, "app_gpio_task", 2048, NULL, 10, NULL);
+    xTaskCreate(app_gpio_task, "app_gpio_task", CONFIG_APP_GPIO_TASK_STACK, NULL, 10, NULL);
     gpio_install_isr_service(0);
     gpio_isr_handler_add(APP_PRESS_GPIO, gpio_isr_handler, (void *) APP_PRESS_GPIO);
 
-    s_app_press_factory_timer = xTimerCreate("restore-tmr", (3000 / portTICK_RATE_MS), pdTRUE, NULL, app_press_factory_button);
+    s_app_press_factory_timer = xTimerCreate("restore-tmr",
+        (CONFIG_APP_PRESS_FACTORY_INTERVAL_MS / portTICK_RATE_MS), pdTRUE, NULL, app_press_factory_button);
 }

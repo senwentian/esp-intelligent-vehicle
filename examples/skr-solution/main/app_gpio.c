@@ -25,19 +25,23 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/timers.h"
 #include "driver/gpio.h"
+
 #include "esp_log.h"
 #include "esp_system.h"
-#include "freertos/timers.h"
-#include "app_gpio.h"
 #include "esp_wifi.h"
 
-#define APP_PRESS_GPIO     CONFIG_APP_PRESS_GPIO
-#define APP_PRESS_GPIO_INPUT_PIN_SEL  (1ULL << APP_PRESS_GPIO)
-#define ANTI_SHAKE_TIME     CONFIG_APP_ANTI_SHAKE_TIME_MS // ms
+#include "app_gpio.h"
+#include "app_qifi.h"
+
+#define APP_PRESS_GPIO                  CONFIG_APP_PRESS_GPIO
+#define APP_PRESS_GPIO_INPUT_PIN_SEL    (1ULL << APP_PRESS_GPIO)
+#define ANTI_SHAKE_TIME                 CONFIG_APP_ANTI_SHAKE_TIME_MS // ms
 
 static xQueueHandle gpio_evt_queue;
 static TimerHandle_t  s_app_press_factory_timer;
@@ -79,6 +83,12 @@ static void app_gpio_task(void *arg)
                 } else {
                     xTimerStop(s_app_press_factory_timer, portMAX_DELAY);
                 }
+            }
+
+            if ((io_num == CONFIG_APP_TRIGGER_CAPTURE_GPIO)
+                && (gpio_get_level(CONFIG_APP_TRIGGER_CAPTURE_GPIO) == 0)) {    // trigger capture
+                ESP_LOGI(TAG, "trigger app post capture");
+                app_post_capture();
             }
         }
     } // end for

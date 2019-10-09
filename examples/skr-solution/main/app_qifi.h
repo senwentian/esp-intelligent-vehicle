@@ -28,19 +28,24 @@ extern "C" {
 #endif
 
 /**
- * @brief     Start QiFi task
+ * @brief       Start QiFi task
 */
 void skr_start_app_qifi_task(void);
 
 /**
- * @brief   Start Capture task
+ * @brief       Start Capture task
 */
 void skr_start_app_capture_task(void);
 
 /**
- * @brief     Initialize WiFi
+ * @brief       Initialize WiFi
 */
 void app_initialise_wifi(void);
+
+/**
+ * @brief       Post capture
+*/
+esp_err_t app_post_capture(void);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,81 @@
 menu "Camera QR-Code Recognize"
 
+menu "Example Config"
+config APP_PRESS_GPIO
+    int "GPIO_NUM_X(long press restore)"
+    range 0 16
+    default 0
+    help
+        Long press to restore WiFi information.
+
+config APP_PRESS_FACTORY_INTERVAL_MS
+    int "long press factory button interval(ms)"
+    default 5000
+    range 2000 8000
+    help
+        For restore WiFi information when long-press APP_PRESS_GPIO.
+
+config APP_TRIGGER_CAPTURE_GPIO
+    int "GPIO_NUM_X(short press trigger capture)"
+    range 0 16
+    default 0
+    help
+        Short press to trigger capture.
+
+config APP_ANTI_SHAKE_TIME_MS
+    int "anti-shake time(ms)"
+    range 50 200
+    default 100
+    help
+        Anti-shake time for long press.
+
+config APP_GPIO_TASK_STACK
+    int "APP GPIO task stack size"
+    range 2048 4096
+    default 2048
+    help
+        This task maintains GPIO state for long press and short press.
+
+config APP_QIFI_TASK_STACK
+    int "APP QiFi task stack size"
+    range 32768 40960
+    default 32768
+    help
+        This task maintains scan state and QiFi parser.
+
+config APP_CAPTURE_TASK_STACK
+    int "APP capture task stack size"
+    range 2048 4096
+    default 2048
+    help
+        This task maintains post capture state.
+
+config APP_QIFI_PRINT_QR
+        bool "printf QR code of WiFi"
+        default y
+        help
+            Print QR code of WiFi if esp-camera scanned.
+
+config APP_QIFI_CONNECT_TIMEOUT_MS
+    int "APP WiFi connect timeout(ms)"
+    range 10000 60000
+    default 30000
+    help
+        WiFi connect timeout, once timeout, will entry scan state again.
+
+config APP_POST_CAPTURE_INTERVAL_MS
+    int "APP post capture timely(ms)"
+    range 1000 60000
+    default 30000
+    help
+        Every APP_POST_CAPTURE_INTERVAL_MS, will post capture to server.
+
+config APP_HTTP_SERVER_URL
+    string "http server url"
+    default "http://192.168.3.63:8070"
+
+endmenu
+
 menu "Camera Pins"
 choice CAMERA_MODEL
     bool "Select Camera Pinout"

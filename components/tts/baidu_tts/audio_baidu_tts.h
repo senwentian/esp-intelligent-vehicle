@@ -1,9 +1,9 @@
 /*
  * ESPRESSIF MIT License
  *
- * Copyright (c) 2019 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ * Copyright (c) 2019-2020 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
  *
- * Permission is hereby granted for use on all ESPRESSIF SYSTEMS products, in which case,
+ * Permission is hereby granted for use on ESPRESSIF SYSTEMS chips only, in which case,
  * it is free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
@@ -21,10 +21,17 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+#pragma once
 
-#ifndef _AUDIO_BAIDU_TTS_H_
-#define _AUDIO_BAIDU_TTS_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+/**
+ * @brief   init tts with text
+*/
 esp_err_t tts_download(char* tts_name);
 
-#endif 
+#ifdef __cplusplus
+}
+#endif

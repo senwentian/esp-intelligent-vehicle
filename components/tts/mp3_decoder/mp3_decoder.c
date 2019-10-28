@@ -1,4 +1,26 @@
-
+/*
+ * ESPRESSIF MIT License
+ *
+ * Copyright (c) 2019 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ *
+ * Permission is hereby granted for use on all ESPRESSIF SYSTEMS products, in which case,
+ * it is free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished
+ * to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
 #include <string.h>
 
 #include "freertos/FreeRTOS.h"
@@ -11,97 +33,64 @@
 #include "esp_system.h"
 
 #include "driver/i2s.h"
-
 #include "mp3_decoder.h"
-
 #include "mad.h"
 
-static const char* TAG = "MP3_DECODER";
-
-extern audio_ringbuff_t audio_ringbuf;
-
-#define I2S_NUM         (0)
+#define I2S_NUM             (0)
 #define ADD_DEL_BUFFPERSAMP (1)
 
-//Reformat the 16-bit mono sample to a format we can send to I2S.
+static uint32_t oldRate;
+static bool s_mp3_task_started = false;
+static audio_ringbuff_t* p_audio_ringbuf;
+
+static const char* TAG = "mp3d";
+
+static void esp_set_mp3_decoder_task_flag(bool flag)
+{
+    s_mp3_task_started = flag;
+}
+
+static bool esp_get_mp3_decoder_task_flag(void)
+{
+    return s_mp3_task_started;
+}
+
+audio_ringbuff_t* mp3_decoder_get_ringbuffer_handle(void)
+{
+    return p_audio_ringbuf;
+}
+
+void mp3_ringbuffer_init(void)
+{
+    if (p_audio_ringbuf == NULL) {
+        ESP_LOGI(TAG, "Create Ring Buffer");
+        p_audio_ringbuf = (audio_ringbuff_t *)malloc(sizeof(audio_ringbuff_t));
+        p_audio_ringbuf->ring_buf = xRingbufferCreate(RING_BUFFER_SIZE, RINGBUF_TYPE_BYTEBUF);
+        p_audio_ringbuf->filled_len = 0;
+    }
+}
+
+// Reformat the 16-bit mono sample to a format we can send to I2S.
 static int sampToI2s(short s)
 {
-    //We can send a 32-bit sample to the I2S subsystem and the DAC will neatly split it up in 2
-    //16-bit analog values, one for left and one for right.
+    // We can send a 32-bit sample to the I2S subsystem and the DAC will neatly split it up in 2
+    // 16-bit analog values, one for left and one for right.
 
-    //Duplicate 16-bit sample to both the L and R channel
+    // Duplicate 16-bit sample to both the L and R channel
     int samp = s;
     samp = (samp) & 0xffff;
     samp = (samp << 16) | samp;
     return samp;
 }
-#if 0
-//Calculate the number of samples that we add or delete. Added samples means a slightly lower
-//playback rate, deleted samples means we increase playout speed a bit. This returns an
-//8.24 fixed-point number
-int recalcAddDelSamp(int oldVal)
-{
-    int ret;
-    long prevUdr = 0;
-    static int cnt;
-    int i;
-    static int minFifoFill = 0;
-    uint32_t fill_len, total_len, underrun_len;
 
-    spi_ram_fifo_get_fill(spi_ram_fifo_download, (uint32_t*)&i);
-
-    if (i < minFifoFill) {
-        minFifoFill = i;
-    }
-
-    //Do the rest of the calculations plusminus every 100mS (assuming a sample rate of 44KHz)
-    cnt++;
-
-    if (cnt < 1500) {
-        return oldVal;
-    }
-
-    cnt = 0;
-
-    spi_ram_fifo_get_total(spi_ram_fifo_download, &total_len);
-
-    if (total_len < 10 * 1024) {
-        //The FIFO is very small. We can't do calculations on how much it's filled on average, so another
-        //algorithm is called for.
-        int tgt = 1600; //we want an average of this amount of bytes as the average minimum buffer fill
-        //Calculate underruns this cycle
-        spi_ram_fifo_get_underrun(spi_ram_fifo_download, &underrun_len);
-        int udr = underrun_len - prevUdr;
-
-        //If we have underruns, the minimum buffer fill has been lower than 0.
-        if (udr != 0) {
-            minFifoFill = -1;
-        }
-
-        //If we're below our target decrease playback speed, and vice-versa.
-        ret = oldVal + ((minFifoFill - tgt));
-        prevUdr += udr;
-        minFifoFill = 9999;
-    } else {
-        //We have a larger FIFO; we can adjust according to the FIFO fill rate.
-        spi_ram_fifo_get_total(spi_ram_fifo_download, &total_len);
-        int tgt = total_len / 2;
-        spi_ram_fifo_get_fill(spi_ram_fifo_download, &fill_len);
-        ret = (fill_len - tgt) * ADD_DEL_BUFFPERSAMP;
-    }
-
-    return ret;
-}
-#endif
-
-//This routine is called by the NXP modifications of libmad. It passes us (for the mono synth)
-//32 16-bit samples.
+// This routine is called by the NXP modifications of libmad. It passes us (for the mono synth)
+// 32 16-bit samples.
 void render_sample_block(short* short_sample_buff, int no_samples)
 {
-    //Signed 16.16 fixed point number: the amount of samples we need to add or delete
-    //in every 32-sample
+    // Signed 16.16 fixed point number: the amount of samples we need to add or delete
+    // in every 32-sample
     static int sampAddDel = 0;
-    //Remainder of sampAddDel cumulatives
+    // Remainder of sampAddDel cumulatives
     static int sampErr = 0;
     int i;
     int samp;
@@ -118,14 +107,14 @@ void render_sample_block(short* short_sample_buff, int no_samples)
     for (i = 0; i < no_samples; i++) {
         samp = sampToI2s(short_sample_buff[i]);
 
-        //Dependent on the amount of buffer we have too much or too little, we're going to add or remove
-        //samples. This basically does error diffusion on the sample added or removed.
+        // Dependent on the amount of buffer we have too much or too little, we're going to add or remove
+        // samples. This basically does error diffusion on the sample added or removed.
         if (sampErr > (1 << 24)) {
             sampErr -= (1 << 24);
-            //...and don't output an i2s sample
+            // ...and don't output an i2s sample
         } else if (sampErr < -(1 << 24)) {
             sampErr += (1 << 24);
-            //..and output 2 samples instead of one.
+            // ..and output 2 samples instead of one.
             data[count++] = (samp & 0x00FF0000) >> 16;    // Left: LSB
             data[count++] = (samp & 0xFF000000) >> 24;    // Left: MSB
             data[count++] = (samp & 0x000000FF);          // Right: LSB
@@ -135,7 +124,7 @@ void render_sample_block(short* short_sample_buff, int no_samples)
             data[count++] = (samp & 0x000000FF);          // Right: LSB
             data[count++] = (samp & 0x0000FF00) >> 8;     // Right: MSB
         } else {
-            //Just output the sample.
+            // Just output the sample.
             data[count++] = (samp & 0x00FF0000) >> 16;    // Left: LSB
             data[count++] = (samp & 0xFF000000) >> 24;    // Left: MSB
             data[count++] = (samp & 0x000000FF);          // Right: LSB
@@ -147,8 +136,7 @@ void render_sample_block(short* short_sample_buff, int no_samples)
     free(data);
 }
 
-//Called by the NXP modificationss of libmad. Sets the needed output sample rate.
-static uint32_t oldRate = 0;
+// Called by the NXP modificationss of libmad. Sets the needed output sample rate.
 void set_dac_sample_rate(int rate)
 {
     if (rate == oldRate) {
@@ -165,47 +153,46 @@ static enum mad_flow input(MadMP3Codec* decoder)
 {
     struct mad_stream* stream = &(decoder->stream);
     char* readBuf = decoder->buffer;
-    int n, i;
+    int n, fifo_have_data_len;
     int rem;
     size_t recv_len = 0;
-    //Shift remaining contents of buf to the front
+    audio_ringbuff_t* audio_ringbuf_handle = mp3_decoder_get_ringbuffer_handle();
+
+    // Shift remaining contents of buf to the front
     rem = stream->bufend - stream->next_frame;
     memmove(readBuf, stream->next_frame, rem);
 
     while (rem < MAD_MP3_BUFFER_SZ) {
-        n = (MAD_MP3_BUFFER_SZ - rem);   //Calculate amount of bytes we need to fill buffer.
-        //spi_ram_fifo_get_fill(spi_ram_fifo_download, (uint32_t*)&i);
-        //printf("spi i:%d\n", i);
-        i = audio_ringbuf.filled_len;
+        n = (MAD_MP3_BUFFER_SZ - rem);                      // Calculate amount of bytes we need to fill buffer.
+        fifo_have_data_len = audio_ringbuf_handle->filled_len;
 
-        if (i < n) {
-            n = i;                 //If the fifo can give us less, only take that amount
+        if (fifo_have_data_len < n) {
+            n = fifo_have_data_len;                         // If the fifo can give us less, only take that amount
         }
 
-        if (n == 0) {                    //Can't take anything?
+        if (n == 0) {                                       // Can't take anything?
             i2s_zero_dma_buffer(I2S_NUM);
             return MAD_FLOW_STOP;
         } else {
-            //Read some bytes from the FIFO to re-fill the buffer.
-            //spi_ram_fifo_read(spi_ram_fifo_download, (uint8_t*)&readBuf[rem], n, portMAX_DELAY);
-            //spi_ram_fifo_read(spi_ram_fifo_download, (uint8_t *)&readBuf[rem], n);
-            uint8_t* recv_data = (uint8_t*)xRingbufferReceiveUpTo(audio_ringbuf.ring_buf, &recv_len, portMAX_DELAY, n);
+            // Read some bytes from the FIFO to re-fill the buffer.
+            uint8_t* recv_data = (uint8_t *)xRingbufferReceiveUpTo(audio_ringbuf_handle->ring_buf, &recv_len, portMAX_DELAY, n);
             if(recv_data == NULL || recv_len != n) {
-                printf("Receive ringbuffer error, len:%d,%d\n", recv_len, n);
+                ESP_LOGW(TAG, "not enough FIFO len:%d,%d", recv_len, n);
             }
+
             memcpy((uint8_t*)&readBuf[rem], recv_data, recv_len);
-            vRingbufferReturnItem(audio_ringbuf.ring_buf, (void*)recv_data);
-            audio_ringbuf.filled_len -= recv_len;
+            vRingbufferReturnItem(audio_ringbuf_handle->ring_buf, (void*)recv_data);
+            audio_ringbuf_handle->filled_len -= recv_len;
             rem += n;
         }
     }
 
-    //Okay, let MAD decode the buffer.
+    // Okay, let MAD decode the buffer
     mad_stream_buffer(stream, (unsigned char const*)readBuf, MAD_MP3_BUFFER_SZ);
-
     return MAD_FLOW_CONTINUE;
 }
-//Routine to print out an error
+
+// Routine to print out an error
 static enum mad_flow error(void* data, struct mad_stream* stream, struct mad_frame* frame)
 {
     ESP_LOGD(TAG, "dec err 0x%04x (%s)\n", stream->error, mad_stream_errorstr(stream));
@@ -214,22 +201,23 @@ static enum mad_flow error(void* data, struct mad_stream* stream, struct mad_fra
 
 MadMP3Codec *MadMP3Open(void)
 {
-    assert(audio_ringbuf.ring_buf != NULL && (audio_ringbuf.filled_len != 0));
+    audio_ringbuff_t* audio_ringbuf_handle = mp3_decoder_get_ringbuffer_handle();
+    assert(audio_ringbuf_handle != NULL);
     MadMP3Codec* mp3_decoder = malloc(sizeof(MadMP3Codec));
 
     if (mp3_decoder == NULL) {
-        printf("MAD: malloc(mp3_decoder) failed\n");
+        ESP_LOGE(TAG, "MAD: malloc(mp3_decoder) failed");
         return NULL;
     }
 
-    mp3_decoder->buffer = malloc(MAD_MP3_BUFFER_SZ);
+    mp3_decoder->buffer = malloc(MAD_MP3_BUFFER_SZ + 1);
 
     if (mp3_decoder->buffer == NULL) {
-        printf("MAD: malloc(mp3 input buffer) failed\n");
+        ESP_LOGE(TAG, "MAD: malloc(mp3 input buffer) failed");
         return NULL;
     }
 
-    printf("MAD: Decoder start.\n");
+    ESP_LOGI(TAG, "MAD: Decoder start");
     mad_stream_init(&(mp3_decoder->stream));
     mad_frame_init(&(mp3_decoder->frame));
     mad_synth_init(&(mp3_decoder->synth));
@@ -240,8 +228,8 @@ MadMP3Codec *MadMP3Open(void)
 int MadMP3Process(MadMP3Codec* decoder)
 {
     int r;
-    if (input(decoder) == MAD_FLOW_STOP) { //calls mad_stream_buffer internally
-        ESP_LOGI(TAG, "MAD: Decoder done\n");
+    if (input(decoder) == MAD_FLOW_STOP) {    // calls mad_stream_buffer internally
+        ESP_LOGI(TAG, "MAD: Decoder done");
         return CODEC_DONE;
     }
 
@@ -250,7 +238,7 @@ int MadMP3Process(MadMP3Codec* decoder)
 
         if (r == -1) {
             if (!MAD_RECOVERABLE((&(decoder->stream))->error)) {
-                //We're most likely out of buffer and need to call input() again
+                // We're most likely out of buffer and need to call input() again
                 break;
             }
 
@@ -272,7 +260,7 @@ int MadMP3Close(MadMP3Codec* codec)
         return CODEC_OK;
     }
 
-    //mad_decoder_finish(codec->decoder);
+    // mad_decoder_finish(codec->decoder);
     free(codec->buffer);
     free(codec);
     codec = NULL;
@@ -287,29 +275,34 @@ void esp_mp3_decoder_process_task(void *pvParameters)
     p = MadMP3Open();
 
     if (p != NULL) {
-        printf("codecProcessing\n");
+        ESP_LOGI(TAG, "Codec Processing");
 
         while (1) {
             res = MadMP3Process(p);
 
             if (res != 0 && res != -1) {
-                printf("decoder process error");
+                ESP_LOGI(TAG, "decoder process end");
                 break;
             } else if (res == -1) {
-                printf("decoder breaked\r\n");
+                ESP_LOGI(TAG, "decoder breaked");
                 break;
             }
         }
     } else {
-        printf("Error open decoder");
+        ESP_LOGE(TAG, "Error open decoder");
     }
 
     MadMP3Close(p);
-    printf("mp3 decoder task delete\r\n");
+    ESP_LOGI(TAG, "delete mp3 decoder task");
+    esp_set_mp3_decoder_task_flag(false);
     vTaskDelete(NULL);
 }
 
 void esp_start_mp3_decoder_task(void)
 {
-    xTaskCreate(esp_mp3_decoder_process_task, "mp3d", 8192, NULL, 5, NULL);
+    if (!esp_get_mp3_decoder_task_flag()){
+        ESP_LOGI(TAG, "start mp3 decoder task");
+        esp_set_mp3_decoder_task_flag(true);
+        xTaskCreate(esp_mp3_decoder_process_task, "mp3d", 8192*2, NULL, 5, NULL);
+    }
 }

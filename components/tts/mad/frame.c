@@ -56,12 +56,14 @@ unsigned long const bitrate_table[5][15] = {
 static
 unsigned int const samplerate_table[3] = { 44100, 48000, 32000 };
 
+extern int IRAM_ATTR_FUN mad_layer_I(struct mad_stream *stream, struct mad_frame *frame);
+extern int IRAM_ATTR_FUN mad_layer_II(struct mad_stream *stream, struct mad_frame *frame);
+
 static
 int (*const decoder_table[3])(struct mad_stream *, struct mad_frame *) = {
-//  mad_layer_I,
-//  mad_layer_II,
-	NULL, NULL,
-  mad_layer_III
+ mad_layer_I,
+ mad_layer_II,
+ mad_layer_III
 };
 
 /*
@@ -450,16 +452,13 @@ int IRAM_ATTR_FUN mad_frame_decode(struct mad_frame *frame, struct mad_stream *s
     goto fail;
 
   /* audio_data() */
-
   frame->header.flags &= ~MAD_FLAG_INCOMPLETE;
 
   if (decoder_table[frame->header.layer - 1](stream, frame) == -1) {
     if (!MAD_RECOVERABLE(stream->error))
       stream->next_frame = stream->this_frame;
-
     goto fail;
   }
-
   /* ancillary_data() */
 
   if (frame->header.layer != MAD_LAYER_III) {

@@ -1,0 +1,29 @@
+menu "Audio Example Configuration"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the example to connect to.
+
+    config WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+            Can be left blank if the network has no security set.
+
+    config API_KEY
+        string "API Key"
+        default ""
+        help
+            API Key of baidu TTS Configuration.
+
+    config SECRET_KEY
+        string "Secret Key"
+        default ""
+        help
+           Secret Key of baidu TTS Configuration.
+
+endmenu

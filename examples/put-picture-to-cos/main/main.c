@@ -21,27 +21,37 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <string.h>
+#include <stdlib.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "app_wifi.h"
 
-/**
- * @brief   init wifi
-*/
-void app_wifi_initialise(void);
+void app_put_picture_to_cos(void* buffer, uint32_t len);
 
-/**
- * @brief   wait wifi connected
-*/
-void app_wifi_wait_connected();
+static const char* TAG = "main";
 
-/**
- * @brief   wait sntp sync
-*/
-void esp_wait_sntp_sync(void);
+void app_main()
+{
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
 
-#ifdef __cplusplus
+    app_wifi_initialise();
+    app_wifi_wait_connected();
+
+    ESP_LOGI(TAG, "Connected to AP, begin SNTP");
+
+    esp_wait_sntp_sync();
+    ESP_LOGI(TAG, "SNTP OK, begin PPC example");
+
+    const char* ppc1 = "Hello, COS!";
+    app_put_picture_to_cos(ppc1, strlen(ppc1));
 }
-#endif

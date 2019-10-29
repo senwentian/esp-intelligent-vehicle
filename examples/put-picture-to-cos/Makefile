@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := put-picture-to_cos
+PROJECT_NAME := baidu-tts
 
 export ESP_SKR_PROJECT_PATH := $(realpath ../../)
 
@@ -12,4 +12,3 @@ export IDF_PATH := $(ESP_SKR_PROJECT_PATH)/esp-idf
 include $(ESP_SKR_PROJECT_PATH)/component.mk
 
 include $(IDF_PATH)/make/project.mk
-

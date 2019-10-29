@@ -14,16 +14,4 @@ menu "Audio Example Configuration"
 
             Can be left blank if the network has no security set.
 
-    config API_KEY
-        string "API Key"
-        default ""
-        help
-            API Key of baidu TTS Configuration.
-
-    config SECRET_KEY
-        string "Secret Key"
-        default ""
-        help
-           Secret Key of baidu TTS Configuration.
-
 endmenu

@@ -1,0 +1,15 @@
+menu "Audio TTS Configuration"
+
+    config BAIDU_API_KEY
+        string "BaiDu TTS API Key"
+        default ""
+        help
+            API Key of baidu TTS Configuration.
+
+    config BAIDU_SECRET_KEY
+        string "BaiDu TTS Secret Key"
+        default ""
+        help
+           Secret Key of baidu TTS Configuration.
+
+endmenu

@@ -245,7 +245,7 @@ static void http_get_baidu_tts_token(char *token)
 {
     char url_pattern[] = "%s?grant_type=client_credentials&client_id=%s&client_secret=%s";
     char url[200] = {0};
-    snprintf(url, 200, url_pattern, API_TOKEN_URL, CONFIG_API_KEY, CONFIG_SECRET_KEY);
+    snprintf(url, 200, url_pattern, API_TOKEN_URL, CONFIG_BAIDU_API_KEY, CONFIG_BAIDU_SECRET_KEY);
     esp_http_client_config_t httpconfig = {
         .url = url,
         .event_handler = _tts_event_handler,

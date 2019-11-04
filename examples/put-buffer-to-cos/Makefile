@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := skr-solution
+PROJECT_NAME := pb-cos
 
 export ESP_SKR_PROJECT_PATH := $(realpath ../../)
 

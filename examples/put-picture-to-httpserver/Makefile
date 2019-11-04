@@ -3,7 +3,7 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := baidu-tts
+PROJECT_NAME := put-picture-to-httpserver
 
 export ESP_SKR_PROJECT_PATH := $(realpath ../../)
 

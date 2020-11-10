@@ -149,6 +149,25 @@ void Current_Action(uint32_t Times, int sym1, int sym2)
     vTaskDelay(1000 / portTICK_RATE_MS);
 }
 
+void Spin_Current_Action(uint32_t Times, int sym)
+{
+    uint32_t time_num = Times * 10;
+    for (int i = 0; i < time_num; i++)
+    {
+        C610_SendCurrentVal(sym * Val,
+                            sym * Val,
+                            sym * Val,
+                            sym * Val);
+        vTaskDelay(100 / portTICK_RATE_MS);
+    }
+    C610_SendCurrentVal(sym * Half_Val,
+                        sym * Half_Val,
+                        sym * Half_Val,
+                        sym * Half_Val);
+    vTaskDelay(100 / portTICK_RATE_MS);
+    C610_SendCurrentVal(0, 0, 0, 0);
+}
+
 void Send_Current_Create(void)
 {
     BaseType_t xReturn = pdPASS;

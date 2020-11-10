@@ -36,25 +36,25 @@
 #define BIT_12 (1ULL << 12)
 #define BIT_13 (1ULL << 13)
 
-#define BIT_right           BIT_0
-#define BIT_behind      BIT_1
-#define BIT_left              BIT_2
-#define BIT_front          BIT_3
-#define BIT_Dst              BIT_4
-#define BIT_pickup      BIT_5
-#define BIT_putdown  BIT_6
-#define BIT_QR               BIT_7
+#define BIT_right      BIT_0
+#define BIT_behind     BIT_1
+#define BIT_left       BIT_2
+#define BIT_front      BIT_3
+#define BIT_Dst        BIT_4
+#define BIT_pickup     BIT_5
+#define BIT_putdown    BIT_6
+#define BIT_QR         BIT_7
+#define BIT_left_spin  BIT_8
+#define BIT_right_spin BIT_9
 
-typedef struct 
-{
+typedef struct {
     uint16_t num;
     uint16_t next_target_name;
     uint8_t finish_flag;
 } wayfind_t;
 
 
-typedef struct
-{
+typedef struct {
     uint32_t Dst_x;
     uint32_t Dst_y;
     uint32_t Dst_z;
@@ -64,11 +64,12 @@ typedef struct
     uint32_t W_Distance;
     uint32_t N_Distance;
 
+    uint32_t spin_time;
 } Dst_address;
 
-extern Dst_address *Dst_info;
+extern Dst_address* Dst_info;
 
-int Rev_Parse(char *instr);
+int Rev_Parse(char* instr);
 
 void PC_Remote_Control_Task(void);
 

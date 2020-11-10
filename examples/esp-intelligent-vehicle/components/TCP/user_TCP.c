@@ -17,7 +17,7 @@ char invalid_command[] = "\033[33minvalid command\033[0m\n" ;
 char other_err[] = "\033[33merr\033[0m\n";
 char success[] = "\033[32mRecieve success!\033[0m\n";
 
-char HELP_Info_buff[600];
+char HELP_Info_buff[700];
 int lenth = 0;
 
 void TCP_Server_Init(void)
@@ -229,6 +229,8 @@ int help_menu(void)
     lenth += sprintf(HELP_Info_buff + lenth, "right:x---------Control the car to move to the right for x seconds\n");
     lenth += sprintf(HELP_Info_buff + lenth, "front:x---------Control the car to move to the front for x seconds\n");
     lenth += sprintf(HELP_Info_buff + lenth, "behind:x--------Control the car to move to the behind for x seconds\n");
+    lenth += sprintf(HELP_Info_buff + lenth, "spinl:x---------Control the car to spin left x seconds\n");
+    lenth += sprintf(HELP_Info_buff + lenth, "spinr:x---------Control the car to spin right x seconds\n");
     lenth += sprintf(HELP_Info_buff + lenth, "Dstaddress:x.y--Control the car to move to the x.y coordinate relative to itself\n");
     lenth += sprintf(HELP_Info_buff + lenth, "pickup:---------Control the robotic arm to pick up materials\n");
     lenth += sprintf(HELP_Info_buff + lenth, "putdown:--------Control the robotic arm to lower the material\n\n");

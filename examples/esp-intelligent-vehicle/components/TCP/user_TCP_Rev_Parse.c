@@ -103,6 +103,26 @@ int Rev_Parse(char *instring)
 #endif
         return 1;
     }
+    else if (!strcmp(str, "spinl"))
+    {
+        instr = instr + lenth + strlen(":");
+        Dst_info->spin_time = atol(instr);
+        // printf("%d\r\n", Dst_info->spin_time);
+#if CONFIG_PC_CONTROL_OPERATION_MODE
+        xTaskNotify(Remote_Control_Task_Handle, BIT_left_spin, eSetBits);
+#endif
+        return 1;
+    }
+    else if (!strcmp(str, "spinr"))
+    {
+        instr = instr + lenth + strlen(":");
+        Dst_info->spin_time = atol(instr);
+        // printf("%d\r\n", Dst_info->spin_time);
+#if CONFIG_PC_CONTROL_OPERATION_MODE
+        xTaskNotify(Remote_Control_Task_Handle, BIT_right_spin, eSetBits);
+#endif
+        return 1;
+    }
     else if (!strcmp(str, "pickup"))
     {
 #if CONFIG_PC_CONTROL_OPERATION_MODE
@@ -270,6 +290,14 @@ void Remote_Control_Task(void *arg)
                         Oblique_Action(-x, y, -1, -1, 1, 1);
                     else if(x < 0 && y < 0)
                         Oblique_Action(-x, -y, -1, -1, -1, 1);
+                break;
+
+            case BIT_left_spin:
+                Spin_Current_Action(Dst_info->spin_time, 1);
+                break;
+
+            case BIT_right_spin:
+                Spin_Current_Action(Dst_info->spin_time, -1);
                 break;
 
             case BIT_pickup:
